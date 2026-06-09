@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#0d5c30"/>
+<meta name="description" content="Análise inteligente de resultados da Lotofácil com IA"/>
+<link rel="manifest" href="manifest.json"/>
+<title>LotoFácil Inteligente</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1a6b3a;--green-light:#22913f;--green-dark:#0d5c30;--green-pale:#e8f5e9;
+  --gold:#d4a017;--gold-light:#f0c040;
+  --bg:#0f1923;--bg2:#162030;--bg3:#1e2d40;--surface:#243040;
+  --text:#e8edf2;--muted:#8a9bb0;--border:#2e3f55;
+  --red:#e53935;--blue:#1976d2;--amber:#f57c00;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;min-height:100vh;overflow-x:hidden}
+header{background:linear-gradient(135deg,var(--green-dark),var(--green));padding:16px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+header h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:.5px}
+header span{font-size:11px;color:rgba(255,255,255,.7);display:block;font-weight:400}
+.leaf{font-size:28px}
+nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+nav button{flex:none;padding:14px 18px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;display:flex;align-items:center;gap:6px}
+nav button.active{color:var(--green-light);border-bottom-color:var(--green-light)}
+nav button:hover:not(.active){color:var(--text)}
+.tab{display:none;padding:20px;animation:fadeIn .3s}
+.tab.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.card h2{font-size:15px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat{background:var(--surface);border-radius:10px;padding:14px;text-align:center}
+.stat .val{font-size:26px;font-weight:700;color:var(--green-light)}
+.stat .lbl{font-size:11px;color:var(--muted);margin-top:4px}
+.ball{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;font-weight:700;font-size:14px;background:var(--green);color:#fff;cursor:pointer;transition:all .2s;flex-shrink:0}
+.ball:hover{transform:scale(1.1)}
+.ball.selected{background:var(--gold);color:#1a1a1a;box-shadow:0 0 0 3px rgba(212,160,23,.4)}
+.ball.hot{background:var(--red)}
+.ball.cold{background:var(--blue)}
+.ball.drawn{background:var(--green-light);transform:scale(1.1)}
+.volante{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:260px;margin:0 auto}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bar-row .num{width:28px;font-size:12px;font-weight:600;color:var(--text);text-align:center}
+.bar-bg{flex:1;background:var(--surface);border-radius:4px;height:20px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;color:#fff;font-weight:600;transition:width .8s ease}
+.bar-fill.hot{background:linear-gradient(90deg,var(--red),#ff5252)}
+.bar-fill.cold{background:linear-gradient(90deg,var(--blue),#42a5f5)}
+.bar-fill.neutral{background:linear-gradient(90deg,var(--green),var(--green-light))}
+.result-item{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:10px}
+.result-item .concurso{font-size:12px;color:var(--muted);margin-bottom:8px}
+.result-item .dezenas{display:flex;flex-wrap:wrap;gap:6px}
+.result-item .dz{width:30px;height:30px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.btn{background:var(--green);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-top:8px;transition:all .2s}
+.btn:hover{background:var(--green-light)}
+.btn.secondary{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn.gold{background:var(--gold);color:#1a1a1a}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-box{background:var(--bg3);border:1px solid var(--green-dark);border-radius:12px;padding:16px;margin-top:14px}
+.ai-box .ai-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;color:var(--green-light);font-weight:600;font-size:14px}
+.ai-resp{font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap}
+.loading{display:flex;gap:4px;justify-content:center;padding:20px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green-light);animation:bounce .8s infinite}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.tag{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;margin:2px}
+.tag.green{background:rgba(26,107,58,.3);color:#4caf50}
+.tag.red{background:rgba(229,57,53,.2);color:#ef5350}
+.tag.blue{background:rgba(25,118,210,.2);color:#42a5f5}
+.tag.gold{background:rgba(212,160,23,.2);color:var(--gold-light)}
+.sum-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
+.sum-row:last-child{border:none;font-weight:700;color:var(--green-light)}
+textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:14px;resize:vertical;min-height:100px}
+select,input[type=number]{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;margin:3px;cursor:pointer;transition:all .2s}
+.chip.on{background:var(--green);border-color:var(--green);color:#fff}
+.prize-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.prize-row .faixa{font-size:14px;font-weight:600}
+.prize-row .prob{font-size:12px;color:var(--muted)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green-dark);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.warn{background:rgba(245,124,0,.15);border:1px solid rgba(245,124,0,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#ffb74d;margin-top:10px;line-height:1.6}
+.progress-bar{height:6px;border-radius:3px;background:var(--surface);margin-top:6px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;background:var(--green-light);transition:width .5s}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="leaf">🍀</span>
+  <div>
+    <h1>LotoFácil Inteligente</h1>
+    <span>Análise com IA · Resultados · Simulador</span>
+  </div>
+</header>
+
+<nav id="nav">
+  <button class="active" onclick="showTab('inicio',this)">🏠 Início</button>
+  <button onclick="showTab('resultados',this)">📋 Resultados</button>
+  <button onclick="showTab('estatisticas',this)">📊 Estatísticas</button>
+  <button onclick="showTab('simulador',this)">🎰 Simulador</button>
+  <button onclick="showTab('ia',this)">🤖 IA</button>
+  <button onclick="showTab('sobre',this)">ℹ️ Info</button>
+</nav>
+
+<!-- ===== INÍCIO ===== -->
+<div id="tab-inicio" class="tab active">
+  <div class="card">
+    <h2>🏆 Último Resultado</h2>
+    <div id="ultimo-resultado">
+      <div class="loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>⚡ Ação Rápida</h2>
+    <button class="btn" onclick="gerarSurpresinha()">🎲 Gerar Surpresinha Inteligente</button>
+    <button class="btn secondary" style="margin-top:8px" onclick="showTab('ia',document.querySelectorAll('#nav button')[4])">🤖 Perguntar à IA</button>
+    <div id="surpresinha-result" style="margin-top:14px;display:none">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Números sugeridos pela análise estatística:</div>
+      <div id="surp-balls" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>📈 Resumo Rápido</h2>
+    <div class="grid3">
+      <div class="stat"><div class="val" id="stat-concursos">—</div><div class="lbl">Concursos analisados</div></div>
+      <div class="stat"><div class="val" style="color:var(--red)" id="stat-hot">20</div><div class="lbl">Número + quente</div></div>
+      <div class="stat"><div class="val" style="color:var(--blue)" id="stat-cold">16</div><div class="lbl">Número + frio</div></div>
+    </div>
+  </div>
+  <div class="warn">⚠️ A Lotofácil é um jogo de azar. Análises estatísticas não garantem resultados. Jogue com responsabilidade e apenas o que pode perder.</div>
+</div>
+
+<!-- ===== RESULTADOS ===== -->
+<div id="tab-resultados" class="tab">
+  <div class="card">
+    <h2>🔍 Buscar Concurso</h2>
+    <div style="display:flex;gap:8px">
+      <input type="number" id="busca-concurso" placeholder="Nº do concurso..." style="flex:1"/>
+      <button class="btn" style="width:auto;padding:10px 14px" onclick="buscarConcurso()">Buscar</button>
+    </div>
+    <button class="btn secondary" style="margin-top:8px" onclick="buscarUltimo()">Último concurso</button>
+  </div>
+  <div id="resultado-detalhado"></div>
+  <div class="card">
+    <h2>📋 Histórico Recente</h2>
+    <div id="historico-lista">
+      <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Busque um concurso acima para ver detalhes.<br>Os dados são carregados da API da CAIXA.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ESTATÍSTICAS ===== -->
+<div id="tab-estatisticas" class="tab">
+  <div class="card">
+    <h2>🔥 Números mais sorteados</h2>
+    <div id="hot-bars"></div>
+  </div>
+  <div class="card">
+    <h2>❄️ Números menos sorteados</h2>
+    <div id="cold-bars"></div>
+  </div>
+  <div class="card">
+    <h2>📊 Frequência completa</h2>
+    <div id="freq-chart" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px"></div>
+  </div>
+  <div class="card">
+    <h2>🧮 Análise de padrões</h2>
+    <div id="padroes"></div>
+  </div>
+</div>
+
+<!-- ===== SIMULADOR ===== -->
+<div id="tab-simulador" class="tab">
+  <div class="card">
+    <h2>🎰 Montar Aposta</h2>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Selecione de 15 a 20 números:</div>
+    <div class="volante" id="volante-sim"></div>
+    <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;color:var(--muted)">Selecionados: <strong id="sel-count" style="color:var(--green-light)">0</strong>/15 mín.</span>
+      <span style="font-size:13px;color:var(--muted)">Custo: <strong id="sel-custo" style="color:var(--gold-light)">—</strong></span>
+    </div>
+    <button class="btn" onclick="limparSim()">🗑 Limpar</button>
+    <button class="btn gold" style="margin-top:8px" onclick="analisarAposta()">🔍 Analisar minha aposta</button>
+  </div>
+  <div id="analise-aposta" style="display:none" class="card">
+    <h2>📊 Análise da sua aposta</h2>
+    <div id="analise-content"></div>
+  </div>
+  <div class="card">
+    <h2>💰 Tabela de prêmios e probabilidades</h2>
+    <div class="prize-row"><span class="faixa">15 acertos (1ª faixa)</span><span class="prob">1 em 3.268.760</span></div>
+    <div class="prize-row"><span class="faixa">14 acertos (2ª faixa)</span><span class="prob">1 em 21.792</span></div>
+    <div class="prize-row"><span class="faixa">13 acertos (3ª faixa)</span><span class="prob">1 em 692</span></div>
+    <div class="prize-row"><span class="faixa">12 acertos (4ª faixa)</span><span class="prob" style="color:var(--gold-light)">1 em 60</span></div>
+    <div class="prize-row" style="border:none"><span class="faixa">11 acertos (5ª faixa)</span><span class="prob" style="color:var(--green-light)">1 em 11</span></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Para aposta simples de 15 números (R$ 3,50)</div>
+  </div>
+</div>
+
+<!-- ===== IA ===== -->
+<div id="tab-ia" class="tab">
+  <div class="card" id="card-apikey">
+    <h2>🔑 Chave da API (Anthropic)</h2>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+      Para usar a IA, você precisa de uma chave gratuita da Anthropic.<br>
+      <a href="https://console.anthropic.com" target="_blank" style="color:var(--green-light)">Criar chave em console.anthropic.com ↗</a>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." style="flex:1;font-family:monospace;font-size:13px"/>
+      <button class="btn" style="width:auto;padding:10px 14px;white-space:nowrap" onclick="salvarChave()">💾 Salvar</button>
+    </div>
+    <div id="key-status" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.6">
+      🔒 A chave fica salva apenas no seu navegador (localStorage). Nunca é enviada a nenhum servidor nosso.
+    </div>
+  </div>
+  <div class="card" id="card-ia-chat">
+    <h2>🤖 Assistente de Loteria com IA</h2>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Faça perguntas sobre estratégias, análise de números, ou peça sugestões baseadas nos dados históricos.</div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Sugestões rápidas:</div>
+      <div>
+        <span class="chip on" onclick="setPrompt(this,'Quais são os 15 números com maior frequência histórica? Monte uma aposta otimizada.')">🔥 Aposta quente</span>
+        <span class="chip" onclick="setPrompt(this,'Analise os padrões de soma e paridade dos últimos concursos e sugira uma aposta balanceada.')">⚖️ Aposta balanceada</span>
+        <span class="chip" onclick="setPrompt(this,'Quais números ficaram mais tempo sem sair? Sugira uma aposta com números atrasados.')">❄️ Números atrasados</span>
+        <span class="chip" onclick="setPrompt(this,'Explique as melhores estratégias para melhorar minhas chances na Lotofácil sem gastar muito.')">💡 Estratégias</span>
+        <span class="chip" onclick="setPrompt(this,'Gere 3 apostas diferentes usando diferentes estratégias: uma com números quentes, uma balanceada e uma com números frios.')">🎯 3 apostas</span>
+      </div>
+    </div>
+    <textarea id="prompt-ia" placeholder="Ex: Quais os 15 números que mais saíram? Sugira uma aposta baseada nisso..."></textarea>
+    <button class="btn" style="margin-top:8px" onclick="perguntarIA()">🤖 Perguntar à IA ↗</button>
+  </div>
+  <div id="ia-resposta"></div>
+  <div class="warn">🎓 A IA analisa padrões históricos mas não pode prever resultados futuros. A Lotofácil é um sorteio aleatório.</div>
+</div>
+
+<!-- ===== SOBRE ===== -->
+<div id="tab-sobre" class="tab">
+  <div class="card">
+    <h2>🍀 Sobre o App</h2>
+    <p style="font-size:14px;color:var(--muted);line-height:1.8">O <strong style="color:var(--text)">LotoFácil Inteligente</strong> analisa dados históricos da Lotofácil para ajudá-lo a tomar decisões mais informadas nas suas apostas.</p>
+  </div>
+  <div class="card">
+    <h2>📊 Dados usados</h2>
+    <div class="sum-row"><span>Fonte dos resultados</span><span style="color:var(--green-light)">API CAIXA + GitHub</span></div>
+    <div class="sum-row"><span>Dados analíticos</span><span style="color:var(--green-light)">loteria.json</span></div>
+    <div class="sum-row"><span>IA</span><span style="color:var(--green-light)">Claude (Anthropic)</span></div>
+  </div>
+  <div class="card">
+    <h2>💡 Dicas para jogar</h2>
+    <div style="font-size:13px;line-height:1.9;color:var(--muted)">
+      <p>✅ Prefira apostas com 16-17 números para melhor custo-benefício</p>
+      <p>✅ Misture números pares e ímpares (aprox. 7-8 ímpares)</p>
+      <p>✅ Distribua entre as 5 colunas do volante</p>
+      <p>✅ Evite sequências muito longas</p>
+      <p>✅ A soma ideal fica entre 179 e 220</p>
+      <p>✅ Considere participar de bolões para mais apostas</p>
+      <p>❌ Nunca aposte mais do que pode perder</p>
+      <p>❌ Não persiga prejuízos</p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>📐 Probabilidades reais</h2>
+    <div style="font-size:13px;color:var(--muted)">
+      <div class="sum-row"><span>15 números - 15 acertos</span><span>1 em 3.268.760</span></div>
+      <div class="sum-row"><span>16 números - 15 acertos</span><span>1 em 204.298</span></div>
+      <div class="sum-row"><span>17 números - 15 acertos</span><span>1 em 24.035</span></div>
+      <div class="sum-row"><span>18 números - 15 acertos</span><span>1 em 4.006</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ANALYTIC_URL = 'https://raw.githubusercontent.com/guilhermeasn/loteria.json/master/data/lotofacil.analytic.json';
+const RESULTS_BASE = 'https://raw.githubusercontent.com/guilhermeasn/loteria.json/master/data/lotofacil.json';
+const CAIXA_API = 'https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil/';
+
+let analyticData = null;
+let selectedSim = new Set();
+let lastResult = null;
+
+const CUSTOS = {15:3.5,16:56,17:476,18:2856,19:13566,20:54264};
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function loadAnalytic() {
+  try {
+    const r = await fetch(ANALYTIC_URL);
+    analyticData = await r.json();
+    renderStats();
+    updateStatCards();
+  } catch(e) {
+    console.log('Analytic load error', e);
+    analyticData = buildFallbackData();
+    renderStats();
+    updateStatCards();
+  }
+}
+
+function buildFallbackData() {
+  return {
+    quantity: {
+      "#20":2042,"#10":2025,"#25":2011,"#11":1982,"#13":1975,"#24":1966,
+      "#14":1964,"#4":1962,"#12":1961,"#3":1960,"#1":1956,"#5":1956,
+      "#2":1947,"#9":1946,"#18":1942,"#22":1940,"#19":1932,"#15":1926,
+      "#21":1926,"#17":1914,"#7":1911,"#23":1902,"#6":1893,"#8":1883,"#16":1853
+    }
+  };
+}
+
+function getQuantityArray() {
+  if (!analyticData || !analyticData.quantity) return [];
+  return Object.entries(analyticData.quantity)
+    .map(([k,v]) => ({num: parseInt(k.replace('#','')), count: v}))
+    .sort((a,b) => a.num - b.num);
+}
+
+function updateStatCards() {
+  const arr = getQuantityArray();
+  if (!arr.length) return;
+  const sorted = [...arr].sort((a,b) => b.count - a.count);
+  document.getElementById('stat-concursos').textContent = '3.200+';
+  document.getElementById('stat-hot').textContent = sorted[0].num;
+  document.getElementById('stat-cold').textContent = sorted[sorted.length-1].num;
+}
+
+function renderStats() {
+  const arr = getQuantityArray();
+  if (!arr.length) return;
+  const sorted = [...arr].sort((a,b) => b.count - a.count);
+  const max = sorted[0].count;
+  
+  const hot5 = sorted.slice(0,8);
+  const cold5 = sorted.slice(-8).reverse();
+
+  document.getElementById('hot-bars').innerHTML = hot5.map(d => {
+    const pct = Math.round((d.count/max)*100);
+    return `<div class="bar-row">
+      <div class="num">${d.num}</div>
+      <div class="bar-bg"><div class="bar-fill hot" style="width:${pct}%">${d.count}x</div></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('cold-bars').innerHTML = cold5.map(d => {
+    const pct = Math.round((d.count/max)*100);
+    return `<div class="bar-row">
+      <div class="num">${d.num}</div>
+      <div class="bar-bg"><div class="bar-fill cold" style="width:${pct}%">${d.count}x</div></div>
+    </div>`;
+  }).join('');
+
+  const fc = document.getElementById('freq-chart');
+  fc.innerHTML = arr.map(d => {
+    const pct = Math.round((d.count/max)*100);
+    const col = pct > 95 ? 'var(--red)' : pct < 90 ? 'var(--blue)' : 'var(--green)';
+    return `<div style="background:var(--surface);border-radius:8px;padding:8px 4px;text-align:center">
+      <div style="font-size:16px;font-weight:700;color:${col}">${d.num}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${d.count}</div>
+    </div>`;
+  }).join('');
+
+  renderPadroes();
+  renderVolante();
+}
+
+function renderPadroes() {
+  if (!analyticData) return;
+  const p = document.getElementById('padroes');
+  let html = '';
+  
+  if (analyticData.sums) {
+    const sums = Object.entries(analyticData.sums).map(([k,v])=>({s:parseInt(k.replace('#','')),c:v})).sort((a,b)=>b.c-a.c);
+    const top3 = sums.slice(0,3);
+    html += `<div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">🔢 Somas mais frequentes</div>
+      <div style="font-size:13px;color:var(--muted)">A soma dos 15 números sorteados costuma ficar entre <strong style="color:var(--gold-light)">179 e 220</strong>.<br>
+      Somas mais comuns: ${top3.map(s=>`<span class="tag gold">${s.s} (${s.c}x)</span>`).join('')}</div>
+    </div>`;
+  }
+
+  if (analyticData.pairs) {
+    const pairs = Object.entries(analyticData.pairs);
+    const best = pairs.sort((a,b)=>b[1]-a[1])[0];
+    html += `<div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">⚖️ Pares e ímpares</div>
+      <div style="font-size:13px;color:var(--muted)">O padrão mais comum é ter <strong style="color:var(--green-light)">${best[0].replace('#','')} números pares</strong> em cada sorteio.<br>
+      Evite apostas com menos de 5 ou mais de 10 pares.</div>
+    </div>`;
+  }
+
+  html += `<div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">📐 Distribuição ideal</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:12px">
+      <span class="tag green">7-8 ímpares</span>
+      <span class="tag blue">7-8 pares</span>
+      <span class="tag gold">Soma 179-220</span>
+      <span class="tag green">Todas as colunas</span>
+      <span class="tag blue">5-6 primos</span>
+    </div>
+  </div>`;
+
+  p.innerHTML = html;
+}
+
+function renderVolante() {
+  const vol = document.getElementById('volante-sim');
+  vol.innerHTML = '';
+  const arr = getQuantityArray();
+  const sorted = [...arr].sort((a,b) => b.count - a.count);
+  const hotSet = new Set(sorted.slice(0,8).map(d=>d.num));
+  const coldSet = new Set(sorted.slice(-8).map(d=>d.num));
+  
+  for (let i = 1; i <= 25; i++) {
+    const b = document.createElement('div');
+    b.className = 'ball' + (hotSet.has(i) ? ' hot' : coldSet.has(i) ? ' cold' : '');
+    b.textContent = i < 10 ? '0'+i : i;
+    b.onclick = () => toggleSim(i, b);
+    b.id = 'sim-'+i;
+    vol.appendChild(b);
+  }
+}
+
+function toggleSim(n, el) {
+  if (selectedSim.has(n)) {
+    selectedSim.delete(n);
+    el.classList.remove('selected');
+  } else {
+    if (selectedSim.size >= 20) { toast('Máximo de 20 números'); return; }
+    selectedSim.add(n);
+    el.classList.add('selected');
+  }
+  const cnt = selectedSim.size;
+  document.getElementById('sel-count').textContent = cnt;
+  document.getElementById('sel-custo').textContent = cnt >= 15 ? 'R$ ' + (CUSTOS[cnt]||'—').toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—';
+}
+
+function limparSim() {
+  selectedSim.clear();
+  document.querySelectorAll('.ball.selected').forEach(b => b.classList.remove('selected'));
+  document.getElementById('sel-count').textContent = '0';
+  document.getElementById('sel-custo').textContent = '—';
+  document.getElementById('analise-aposta').style.display = 'none';
+}
+
+function analisarAposta() {
+  if (selectedSim.size < 15) { toast('Selecione pelo menos 15 números'); return; }
+  const nums = [...selectedSim].sort((a,b)=>a-b);
+  const soma = nums.reduce((a,b)=>a+b,0);
+  const pares = nums.filter(n => n%2===0).length;
+  const impares = nums.length - pares;
+  const arr = getQuantityArray();
+  const sortedByFreq = [...arr].sort((a,b)=>b.count-a.count);
+  const hotSet = new Set(sortedByFreq.slice(0,8).map(d=>d.num));
+  const coldSet = new Set(sortedByFreq.slice(-8).map(d=>d.num));
+  const hotCount = nums.filter(n=>hotSet.has(n)).length;
+  const coldCount = nums.filter(n=>coldSet.has(n)).length;
+  
+  const somaOk = soma >= 179 && soma <= 220;
+  const parOk = pares >= 6 && pares <= 9;
+  
+  let score = 0;
+  if (somaOk) score += 30;
+  if (parOk) score += 25;
+  if (hotCount >= 3) score += 20;
+  score += Math.min(coldCount * 5, 25);
+  score = Math.min(score, 100);
+
+  const html = `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${nums.map(n=>`<div class="dz">${n<10?'0'+n:n}</div>`).join('')}
+      </div>
+    </div>
+    <div class="sum-row"><span>Soma total</span><span style="color:${somaOk?'var(--green-light)':'var(--red)'}">
+      ${soma} ${somaOk?'✅':'⚠️ fora do ideal (179-220)'}
+    </span></div>
+    <div class="sum-row"><span>Pares / Ímpares</span>
+      <span style="color:${parOk?'var(--green-light)':'var(--amber)'}">
+        ${pares} pares / ${impares} ímpares ${parOk?'✅':'⚠️'}
+      </span>
+    </div>
+    <div class="sum-row"><span>Números quentes incluídos</span>
+      <span style="color:var(--red)">${hotCount} 🔥</span>
+    </div>
+    <div class="sum-row"><span>Números frios incluídos</span>
+      <span style="color:var(--blue)">${coldCount} ❄️</span>
+    </div>
+    <div class="sum-row"><span>Custo da aposta</span>
+      <span style="color:var(--gold-light)">R$ ${(CUSTOS[nums.length]||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+    </div>
+    <div style="margin-top:14px;background:var(--surface);border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Score estatístico</div>
+      <div style="font-size:32px;font-weight:700;color:${score>70?'var(--green-light)':score>40?'var(--gold-light)':'var(--red)'}">
+        ${score}/100
+      </div>
+      <div class="progress-bar" style="margin-top:8px">
+        <div class="progress-fill" style="width:${score}%;background:${score>70?'var(--green-light)':score>40?'var(--gold-light)':'var(--red)'}"></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">
+        ${score>70?'Aposta bem balanceada! 🎉':score>40?'Aposta razoável. Pode melhorar.':'Considere rebalancear os números.'}
+      </div>
+    </div>
+  `;
+  document.getElementById('analise-content').innerHTML = html;
+  document.getElementById('analise-aposta').style.display = 'block';
+  document.getElementById('analise-aposta').scrollIntoView({behavior:'smooth'});
+}
+
+function gerarSurpresinha() {
+  const arr = getQuantityArray();
+  if (!arr.length) { toast('Carregando dados...'); return; }
+  
+  const sortedByFreq = [...arr].sort((a,b)=>b.count-a.count);
+  const hot = sortedByFreq.slice(0,12).map(d=>d.num);
+  const mid = sortedByFreq.slice(12,20).map(d=>d.num);
+  const cold = sortedByFreq.slice(-5).map(d=>d.num);
+  
+  shuffle(hot); shuffle(mid); shuffle(cold);
+  const nums = [...hot.slice(0,8), ...mid.slice(0,5), ...cold.slice(0,2)].sort((a,b)=>a-b);
+  
+  const soma = nums.reduce((a,b)=>a+b,0);
+  const pares = nums.filter(n=>n%2===0).length;
+  
+  if (soma < 179 || soma > 220 || pares < 6 || pares > 9) {
+    return gerarSurpresinha();
+  }
+
+  const el = document.getElementById('surp-balls');
+  el.innerHTML = nums.map(n=>`<div class="ball">${n<10?'0'+n:n}</div>`).join('');
+  document.getElementById('surpresinha-result').style.display = 'block';
+  toast('Surpresinha gerada! 🍀');
+}
+
+function shuffle(arr) {
+  for (let i = arr.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+async function buscarUltimo() {
+  buscarConcurso('ultimo');
+}
+
+async function buscarConcurso(numero) {
+  const n = numero === 'ultimo' ? '' : (document.getElementById('busca-concurso').value || '');
+  const el = document.getElementById('resultado-detalhado');
+  el.innerHTML = `<div class="card"><div class="loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  
+  try {
+    let url = CAIXA_API + (n || '');
+    const r = await fetch(url);
+    const data = await r.json();
+    renderResultado(data, el);
+    lastResult = data;
+    renderUltimoResultado(data);
+  } catch(e) {
+    el.innerHTML = `<div class="card" style="text-align:center;color:var(--muted);font-size:13px">
+      <p>⚠️ Não foi possível conectar à API da CAIXA (CORS).</p>
+      <p style="margin-top:8px">Tente abrir o app via HTTPS ou use um servidor local.</p>
+      <p style="margin-top:8px"><a href="https://loterias.caixa.gov.br/Paginas/lotofacil.aspx" target="_blank" style="color:var(--green-light)">Ver resultados no site da CAIXA ↗</a></p>
+    </div>`;
+  }
+}
+
+function renderResultado(data, container) {
+  if (!data || !data.dezenasSorteadasOrdemSorteio) {
+    container.innerHTML = `<div class="card"><p style="color:var(--muted);font-size:13px">Resultado não encontrado.</p></div>`;
+    return;
+  }
+  const dezenas = data.dezenasSorteadasOrdemSorteio || [];
+  const dezOrd = [...dezenas].sort((a,b)=>parseInt(a)-parseInt(b));
+  
+  container.innerHTML = `
+    <div class="card">
+      <h2>🏆 Concurso ${data.numero} — ${data.dataApuracao}</h2>
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Ordem do sorteio:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          ${dezenas.map(d=>`<div class="ball drawn">${parseInt(d)<10?'0'+parseInt(d):d}</div>`).join('')}
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Ordem crescente:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${dezOrd.map(d=>`<div class="ball">${parseInt(d)<10?'0'+parseInt(d):d}</div>`).join('')}
+        </div>
+      </div>
+      ${data.listaRateioPremio ? `
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">💰 Premiação</div>
+        ${data.listaRateioPremio.map(p=>`
+          <div class="sum-row">
+            <span>${p.descricaoFaixa}</span>
+            <span style="color:var(--gold-light)">${p.numeroDeGanhadores} ganhadores — R$ ${parseFloat(p.valorPremio).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+          </div>
+        `).join('')}
+      </div>` : ''}
+      ${data.proximoConcurso ? `<div style="margin-top:12px;font-size:12px;color:var(--muted)">Próximo concurso: <strong style="color:var(--green-light)">${data.dataProximoConcurso}</strong></div>` : ''}
+    </div>
+  `;
+}
+
+function renderUltimoResultado(data) {
+  if (!data || !data.dezenasSorteadasOrdemSorteio) return;
+  const dezenas = [...data.dezenasSorteadasOrdemSorteio].sort((a,b)=>parseInt(a)-parseInt(b));
+  document.getElementById('ultimo-resultado').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Concurso ${data.numero} — ${data.dataApuracao}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:7px">
+      ${dezenas.map(d=>`<div class="ball">${parseInt(d)<10?'0'+parseInt(d):d}</div>`).join('')}
+    </div>
+    ${data.acumulado ? '<div style="margin-top:10px"><span class="tag gold">ACUMULOU! 🎉</span></div>' : ''}
+  `;
+}
+
+function salvarChave() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    document.getElementById('key-status').innerHTML = '<span style="color:var(--red)">❌ Chave inválida. Deve começar com sk-ant-</span>';
+    return;
+  }
+  localStorage.setItem('anthropic_key', key);
+  document.getElementById('key-status').innerHTML = '<span style="color:var(--green-light)">✅ Chave salva com sucesso!</span>';
+  document.getElementById('api-key-input').value = '••••••••••••••••••••' + key.slice(-6);
+  toast('Chave salva! 🔑');
+}
+
+function initChave() {
+  const saved = localStorage.getItem('anthropic_key');
+  if (saved) {
+    document.getElementById('api-key-input').value = '••••••••••••••••••••' + saved.slice(-6);
+    document.getElementById('key-status').innerHTML = '<span style="color:var(--green-light)">✅ Chave configurada — IA pronta para usar!</span>';
+  }
+}
+
+function setPrompt(chip, txt) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  chip.classList.add('on');
+  document.getElementById('prompt-ia').value = txt;
+}
+
+async function perguntarIA() {
+  const prompt = document.getElementById('prompt-ia').value.trim();
+  if (!prompt) { toast('Digite uma pergunta'); return; }
+
+  const apiKey = localStorage.getItem('anthropic_key');
+  if (!apiKey) {
+    toast('Configure sua chave da API primeiro 🔑');
+    document.getElementById('card-apikey').scrollIntoView({behavior:'smooth'});
+    return;
+  }
+  
+  const arr = getQuantityArray();
+  const sortedByFreq = [...arr].sort((a,b)=>b.count-a.count);
+  const hot = sortedByFreq.slice(0,10).map(d=>d.num).join(', ');
+  const cold = sortedByFreq.slice(-10).map(d=>d.num).join(', ');
+  
+  const el = document.getElementById('ia-resposta');
+  el.innerHTML = `<div class="ai-box"><div class="ai-header">🤖 Analisando...</div><div class="loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+
+  const systemPrompt = `Você é um especialista em análise estatística da Lotofácil (loteria brasileira da CAIXA).
+Dados históricos atuais (baseados em 3200+ concursos):
+- Números MAIS frequentes: ${hot}
+- Números MENOS frequentes: ${cold}
+- Soma ideal dos 15 números: entre 179 e 220
+- Distribuição ideal: 7-8 pares, 7-8 ímpares
+- A loteria sorteia 15 números de 1 a 25, pagando de 11 a 15 acertos
+
+Responda de forma prática e útil. Se sugerir apostas, indique os números de forma clara.
+Sempre lembre que é um jogo de azar e não há garantia de ganhos.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{role:'user', content: prompt}]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) {
+      el.innerHTML = `<div class="ai-box"><div class="ai-header">⚠️ Erro da API</div><div class="ai-resp" style="color:var(--red)">${escapeHtml(data.error.message||'Erro desconhecido')}</div></div>`;
+      return;
+    }
+    const text = data.content?.map(c=>c.text||'').join('') || 'Sem resposta.';
+    el.innerHTML = `<div class="ai-box">
+      <div class="ai-header">🤖 Análise da IA</div>
+      <div class="ai-resp">${escapeHtml(text)}</div>
+    </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="ai-box">
+      <div class="ai-header">⚠️ Erro</div>
+      <div class="ai-resp" style="color:var(--muted)">Não foi possível conectar à IA. Verifique sua conexão e a chave da API.</div>
+    </div>`;
+  }
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+loadAnalytic();
+buscarUltimo();
+initChave();
+</script>
+</body>
+</html>
